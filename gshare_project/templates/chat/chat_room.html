@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Simple Chat</title>
+  <style>
+/* LAYOUT */
+.chat-container {
+    display: flex;
+    height: 100vh;
+    font-family: Arial, sans-serif;
+}
+
+/* LEFT SIDEBAR */
+.sidebar-left {
+    width: 220px;
+    background: #e6e5e5ff;
+    color: black;
+    padding: 15px;
+    overflow-y: auto;
+}
+
+.section-title {
+    font-size: 16px;
+    margin-bottom: 10px;
+    color: black;
+}
+
+.sidebar-list {
+    list-style: none;
+    padding: 0;
+    margin-bottom: 25px;
+}
+
+.sidebar-link {
+    display: block;
+    padding: 8px 10px;
+    border-radius: 6px;
+    text-decoration: none;
+    color: black;
+}
+
+.sidebar-link:hover {
+    background: #dadadaff;
+}
+
+/* MAIN CHAT PANEL */
+.chat-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #f3f3f3;
+}
+
+.chat-log {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+}
+
+/* CHAT BUBBLES */
+.message {
+    margin-bottom: 12px;
+    max-width: 60%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    line-height: 1.4;
+    font-size: 15px;
+    word-wrap: break-word;
+}
+
+.message-self {
+    background: #007bff;
+    color: white;
+    margin-left: auto;
+}
+
+.message-other {
+    background: white;
+    border: 1px solid #ccc;
+}
+
+/* INPUT AREA */
+.chat-input-area {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    background: #ddd;
+    gap: 10px;
+}
+
+.chat-input {
+    flex: 1;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #aaa;
+}
+
+.send-btn, .image-btn {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+}
+
+.send-btn {
+    background: #007bff;
+    color: white;
+}
+
+.image-btn {
+    background: #555;
+    color: white;
+}
+
+/* IMAGE PREVIEW */
+.image-preview-container {
+    position: relative;
+}
+
+.image-preview {
+    max-width: 80px;
+    max-height: 80px;
+    border-radius: 6px;
+}
+
+.remove-img-btn {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    border: none;
+    background: red;
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+/* RIGHT SIDEBAR */
+.sidebar-right {
+    width: 220px;
+    background: #e6e5e5ff;
+    border-left: 1px solid #ddd;
+    padding: 15px;
+}
+
+/* UNREAD NOTIFICATION BADGE */
+.unread-badge {
+    background-color: #10B981; /* green bubble */
+    color: white;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 2px 6px;
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    pointer-events: none; /* link still clickable */
+}
+
+/* Make sidebar link items flex so badge sits on the right */
+.sidebar-link {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+
+  </style>
+</head>
+<body>
+    {% include "navbar.html" %}
+
+
+<div class="chat-container">
+
+    <!-- LEFT SIDEBAR -->
+    <aside class="sidebar-left">
+        <h3 class="section-title">Direct Messages</h3>
+        <ul class="sidebar-list">
+            {% for DM in dm_list %}
+                <li>
+                    <a href="{% url 'direct_message' DM.id %}" class="sidebar-link">{{ DM.other_user }}
+                        <span id="unread-thread-{{ dm.id }}"></span>
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+
+        <h3 class="section-title">Group Chats</h3>
+        <ul class="sidebar-list">
+            {% for group in groups %}
+                <li><a href="{% url 'chat_room' group.slug %}" class="sidebar-link">{{ group.name }}
+                    <span id="unread-group-{{ group.id }}"></span>
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    </aside>
+
+    <!-- CENTER CHAT PANEL -->
+    <main class="chat-panel">
+
+        <div id="chat-log" class="chat-log"></div>
+
+        <div class="chat-input-area">
+            <input id="chat-message-input" type="text" placeholder="Type a message..." class="chat-input">
+
+            <input id="chat-image-input" type="file" accept="image/*" style="display:none;">
+
+            <button id="chooseImageBtn" class="image-btn">+</button>
+
+            <div id="imagePreviewContainer" class="image-preview-container" style="display:none;">
+                <img id="imagePreview" class="image-preview">
+                <button id="removeImageBtn" class="remove-img-btn">✖</button>
+            </div>
+
+            <button id="chat-message-submit" class="send-btn">Send</button>
+        </div>
+    </main>
+
+    <!-- RIGHT SIDEBAR -->
+    <aside class="sidebar-right">
+        {% if room_code %}
+            <h3>Room Info</h3>
+            <p><strong>Name:</strong> {{ room_name }}</p>
+            <p><strong>Code:</strong> {{ room_code }}</p>
+        {% else %}
+            <h3>Direct Message</h3>
+            <p><strong>Chatting with:</strong> {{ other_user }}</p>
+        {% endif %}
+
+
+    </aside>
+
+</div>
+
+<div id="messageMenu" 
+     style="position:absolute; display:none; 
+            background:white; border:1px solid #ccc; 
+            padding:5px; border-radius:6px; 
+            z-index:1000;">
+    <div id="editOption" style="padding:5px; cursor:pointer;">✏️ Edit Message</div>
+    <div id="deleteOption" style="padding:5px; cursor:pointer;">🗑️ Delete Message</div>
+</div>
+
+  <!-- WebSocket Script -->
+  <script>
+    const roomName = "{{ room_name }}";
+    const username = "{{ user.username }}";
+
+  const ws_scheme = window.location.protocol === "https:" ? "wss" : "ws";
+
+  const chatSocket = new WebSocket(
+      ws_scheme + "://" + window.location.host +
+      "/{% if thread %}ws/chat/dm/{{ thread.id }}/{% else %}ws/chat/{{ room_name }}/{% endif %}"
+  );
+
+    const chatLog = document.querySelector('#chat-log');
+    let selectedImage = null;
+    let isTyping = false;
+    let unreadNotifications = [];
+
+    window.onload = () => chatLog.scrollTop = chatLog.scrollHeight;
+
+    // load notifications on page load
+    window.addEventListener('load', () => {
+      const notifications = document.querySelectorAll('#notification-list > div');
+      updateNotificationBadge(notifications.length);
+      
+      // Initialize sidebar state
+      updateSidebars();
+    });
+
+    function updateNotificationBadge(count) {
+      const badge = document.getElementById('notification-badge');
+      const badgeCount = document.getElementById('badge-count');
+
+      if (count > 0) {
+          badgeCount.textContent = count;
+          badge.classList.remove('hidden');
+      } else {
+          badge.classList.add('hidden');
+      }
+    }
+
+    // Image Upload Button
+    document.getElementById('image-upload-btn').addEventListener('click', () => {
+        document.getElementById('image-input').click();
+    });
+
+    // File Input Change
+    document.getElementById('image-input').addEventListener('change', (e) => {
+        selectedImage = e.target.files[0];
+        if (selectedImage) {
+            showImagePreview(selectedImage);
+            console.log("Image selected:", selectedImage.name);
+        }
+    });
+
+    // Paste Image
+    document.getElementById('chat-message-input').addEventListener('paste', (e) => {
+        const items = e.clipboardData.items;
+
+    for (const item of items) {
+      if (item.type.startsWith("image/")) {
+          let blob = item.getAsFile();
+
+          // Blob has NO name → wrap it in a File so Django + AWS accept it
+          const file = new File([blob], `pasted_${Date.now()}.png`, {
+              type: blob.type || "image/png"
+          });
+
+          selectedImageFile = file;
+          loadImagePreview(file);
+          e.preventDefault();
+          break;
+      }
+
+    }
+});
+
+document.addEventListener("DOMContentLoaded", function() {
+  const chatLog = document.getElementById("chat-log");
+  const input = document.getElementById("chat-message-input");
+  const sendBtn = document.getElementById("chat-message-submit");
+
+  function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== "") {
+          const cookies = document.cookie.split(";");
+          for (let i = 0; i < cookies.length; i++) {
+              const cookie = cookies[i].trim();
+              if (cookie.substring(0, name.length + 1) === (name + "=")) {
+                  cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                  break;
+              }
+          }
+      }
+      return cookieValue;
+  }
+
+let lastMessageId = 0;
+
+function renderMessage(msg) {
+    const div = document.createElement("div");
+    let isSelf = msg.username === CURRENT_USERNAME;
+
+    div.classList.add("message");
+    div.classList.add(isSelf ? "message-self" : "message-other");
+    div.dataset.messageId = msg.id;
+
+    if (msg.content === "(deleted)") {
+        // Show placeholder for deleted messages
+        div.innerHTML = `<strong>${msg.username}</strong><br><em>Message deleted</em>`;
+    } else {
+        div.innerHTML = `<strong>${msg.username}</strong><br>${msg.content || ""}`;
+
+        if (msg.image_url) {
+            const img = document.createElement("img");
+            img.src = msg.image_url;
+            img.style.maxWidth = "200px";
+            img.style.marginTop = "8px";
+            img.style.borderRadius = "8px";
+            div.appendChild(img);
+        }
+
+        // Only add right-click menu for messages that can still be edited/deleted
+        if (isSelf) div.addEventListener("contextmenu", showMessageMenu);
+    }
+
+    chatLog.appendChild(div);
+    scrollToBottom();
+    lastMessageId = Math.max(lastMessageId, msg.id);
+}
+
+
+
+function isNearBottom() {
+    return chatLog.scrollHeight - chatLog.scrollTop - chatLog.clientHeight < 50;
+}
+
+
+async function loadMessages() {
+    try {
+        const url = `/groups/list_messages/?group_id=${GROUP_ID}&thread_id=${THREAD_ID}&last_id=${lastMessageId}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(res.statusText);
+
+        const data = await res.json();
+        if (!data.messages || data.messages.length === 0) return;
+
+        const shouldScroll = isNearBottom();
+
+        data.messages.forEach(msg => {
+            if (msg.id > lastMessageId) {
+                renderMessage(msg);
+            }
+        });
+
+
+        if(shouldScroll) {
+                // Scroll AFTER the messages finish rendering
+          requestAnimationFrame(() => {
+              chatLog.scrollTop = chatLog.scrollHeight;
+          });
+        }
+
+    } catch (err) {
+        console.error("Error loading messages:", err);
+    }
+}
+
+
+
+
+
+// REMOVE IMAGE BUTTON
+removeImageBtn.addEventListener("click", () => {
+    selectedImageFile = null;
+    imagePreview.src = "";
+    previewContainer.style.display = "none";
+    imageInput.value = ""; // clear file input
+});
+
+  async function sendMessage() {
+    const msg = input.value.trim();
+
+    const formData = new FormData();
+    formData.append("content", msg);
+    if (GROUP_ID) formData.append("group_id", GROUP_ID);
+    if (THREAD_ID) formData.append("thread_id", THREAD_ID);
+    if (selectedImageFile) {
+        formData.append("image_file", selectedImageFile);
+    }
+
+    const res2 = await fetch("/groups/send_message/", {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": getCookie("csrftoken")
+        },
+        body: formData,
+    });
+
+    if (res2.ok) {
+        input.value = "";
+        selectedImageFile = null;
+        imageInput.value = ""; // clear file input
+        loadMessages();
+        removeImageBtn.click(); // clear preview
+
+    }
+}
+
+const NOTIF_URL = "{% url 'json_notifications' %}";
+
+async function updateNotifications() {
+    try {
+        const res = await fetch(NOTIF_URL);
+        if (!res.ok) throw new Error(res.statusText);
+
+        const data = await res.json();
+
+        data.groups.forEach(g => {
+            if (g.group_id != GROUP_ID) {  // ignore current group
+                const el = document.getElementById(`unread-group-${g.group_id}`);
+                if (el) el.innerText = g.unread_count > 0 ? g.unread_count : "";
+            }
+        });
+
+        data.threads.forEach(t => {
+            if (t.thread_id != THREAD_ID) {  // ignore current thread
+                const el = document.getElementById(`unread-thread-${t.thread_id}`);
+                if (el) el.innerText = t.unread_count > 0 ? t.unread_count : "";
+            }
+        });
+
+
+    } catch(err) {
+        console.error("Error fetching notifications:", err);
+    }
+}
+
+
+let selectedMessageId = null;
+const menu = document.getElementById("messageMenu");
+
+function showMessageMenu(event) {
+    event.preventDefault();
+
+    const msgDiv = event.currentTarget;
+
+    // Only allow editing own messages
+    if (!msgDiv.classList.contains("message-self")) return;
+
+    selectedMessageId = msgDiv.dataset.messageId;
+
+    menu.style.top = event.pageY + "px";
+    menu.style.left = event.pageX + "px";
+    menu.style.display = "block";
+}
+
+// Hide menu when clicking anywhere
+document.addEventListener("click", () => {
+    menu.style.display = "none";
+});
+
+document.getElementById("editOption").addEventListener("click", () => {
+    menu.style.display = "none";
+    startEditingMessage(selectedMessageId);
+});
+
+let originalMessageText = null;
+
+function startEditingMessage(messageId) {
+    const msgDiv = document.querySelector(`[data-message-id="${messageId}"]`);
+    if (!msgDiv) return;
+
+    originalMessageText  = msgDiv.innerText.replace(/^[^\n]+\n/, ""); // Remove username line
+
+    msgDiv.innerHTML = `
+        <textarea id="editBox" 
+                  style="width:95%; height:60px;">${originalMessageText}</textarea>
+        <button id="saveEditBtn">Save</button>
+        <button id="cancelEditBtn">Cancel</button>
+    `;
+
+    document.getElementById("saveEditBtn").onclick = () => saveMessageEdit(messageId);
+    document.getElementById("cancelEditBtn").onclick = () => cancelMessageEdit(messageId);
+}
+
+function cancelMessageEdit(messageId) {
+    const msgDiv = document.querySelector(`[data-message-id="${messageId}"]`);
+    if (!msgDiv) return;
+
+    msgDiv.innerHTML = `<strong>${CURRENT_USERNAME}</strong><br>${originalMessageText || ""}`;
+
+    // Clear the saved original text
+    originalMessageText = null;
+}
+
+
+async function saveMessageEdit(messageId) {
+    const newText = document.getElementById("editBox").value;
+
+    const url = "{% url 'edit_message' 0 %}".replace('0', messageId);
+
+    const res = await fetch(url, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCookie("csrftoken"),
+        },
+        body: JSON.stringify({ content: newText }),
+    });
+
+    if (res.ok) {
+        const data = await res.json();
+
+        // Replace textarea with updated message content
+        const msgDiv = document.querySelector(`[data-message-id="${messageId}"]`);
+        if (msgDiv) {
+            msgDiv.innerHTML = `<strong>${CURRENT_USERNAME}</strong><br>${data.content || ""}`;
+        }
+        loadMessages(); // reload to show updated content
+    }
+}
+
+document.getElementById("deleteOption").addEventListener("click", async () => {
+    if (!selectedMessageId) return;
+
+    const url = "{% url 'delete_message' 0 %}".replace("0", selectedMessageId);
+
+    const res = await fetch(url, {
+        method: "POST",
+        headers: { "X-CSRFToken": getCookie("csrftoken") }
+    });
+
+    if (res.ok) {
+        loadMessages();  // reload to show "(deleted)"
+    } else {
+        console.error("Failed to delete message");
+    }
+
+    menu.style.display = "none";
+    loadMessages();
+    window.location.reload();
+});
+
+function scrollToBottom() {
+    const images = chatLog.querySelectorAll("img");
+    let loadedCount = 0;
+
+    if (images.length === 0) {
+        // No images, scroll immediately
+        chatLog.scrollTop = chatLog.scrollHeight;
+        return;
+    }
+
+    images.forEach(img => {
+        if (img.complete) {
+            loadedCount++;
+        } else {
+            img.onload = img.onerror = () => {
+                loadedCount++;
+                if (loadedCount === images.length) {
+                    chatLog.scrollTop = chatLog.scrollHeight;
+                }
+            };
+        }
+    });
+
+    // If all images were already loaded
+    if (loadedCount === images.length) {
+        chatLog.scrollTop = chatLog.scrollHeight;
+    }
+}
+
+
+// Poll every 5 seconds
+setInterval(updateNotifications, 5000);
+updateNotifications(); // initial call
+
+
+
+  sendBtn.addEventListener("click", sendMessage);
+  input.addEventListener("keydown", e => { if (e.key === "Enter") sendMessage(); });
+
+  setInterval(loadMessages, 3000);
+  loadMessages();
+});
+</script>
+
+
+</body>
+</html>

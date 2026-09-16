@@ -1,0 +1,510 @@
+{% load tailwind_cli%}
+<!DOCTYPE HTML>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <script src="{% static 'js/speechtotext.js' %}?v={% now 'U' %}"></script>
+    <title>Stores_cart</title>
+    {% tailwind_css %}
+
+</head>
+{% include "navbar.html" %}
+<body class="Stores_desgin">
+
+    <div class="cart-page">
+        <div class="cart-filters-row">
+            <form action="{% url 'cart' %}" method="get" class="cart-filter-form">
+                {% comment %} <input type="hidden" name="store_filter" id="store_filter" value="{{ store_filter|default:'All' }}"> {% endcomment %}
+
+                <div class="filter-group">
+                    <label class="filter-label" for="Price-Range">Price Range</label>
+                        <select name="Price-Range" id="Price-Range" class="filter-select">
+                            <option value="Any" selected>Any</option>
+                            <option value="0-10">0-$10</option>
+                            <option value="10-25">$10-$25</option>
+                            <option value="25-50">$25-$50</option>
+                            <option value="50-100">$50-$100</option>
+                            <option value="100+">$100+</option>
+                        </select>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label" for="StoresSelect">Store</label>
+                    <select id="StoresSelect" name="Stores" class="filter-select">
+                        <option value="All" {% if store_filter == 'All' %}selected{% endif %}>All</option>
+                        <option value="Walmart" {% if store_filter == 'Walmart' %}selected{% endif %}>Walmart</option>
+                        <option value="Target" {% if store_filter == 'Target' %}selected{% endif %}>Target</option>
+                        <option value="Costco" {% if store_filter == 'Costco' %}selected{% endif %}>Costco</option>
+                        <option value="Kroger" {% if store_filter == 'Kroger' %}selected{% endif %}>Kroger</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label class="filter-label invisible">Zip Code</label> <!-- placeholder for alignment -->
+                    <input type="text" name="zip_code" placeholder="Zip Code" value="{{ zip_code|default:'' }}" class="filter-input filter-input-strong">
+                </div>
+
+                    {% comment %} <div id="krogerBox" class="basis-full mt-2 {% if store_filter == 'Kroger' %}block{% else %}hidden{% endif %}">
+                        <div class="border rounded-lg bg-white shadow-md p-3">
+                            <div class="text-sm text-gray-600 mb-2">Search in Kroger</div>
+                            <div class="flex flex-wrap gap-2 items-end">
+                                <label class="flex flex-col">
+                                    <span class="text-xs text-gray-600">Zip code</span>
+                                    <input name="zip_code" value="{{ zip_code|default:'' }}" placeholder="e.g. 84112"
+                                        class="border rounded px-3 py-2">
+                                </label>
+                                <label class="flex flex-col">
+                                    <span class="text-xs text-gray-600">Item</span>
+                                    <input name="search_term" value="{{ search_term|default:'' }}" placeholder="e.g. milk"
+                                        class="border rounded px-3 py-2">
+                                </label>
+                                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Search Kroger</button>
+                            </div>
+                        </div>
+                    </div> {% endcomment %}
+                <div class="search-row">
+                    <input type="text" name="Item_Search_Bar" placeholder="Search for an item" class="search-input">
+                    <button type="submit" class="search-button">Search</button>
+
+                </div>
+            </form>
+        </div>
+
+        <div id="voice-order-start-container" style="width:100%; max-width:960px; box-sizing:border-box; margin:12px auto 0; display:flex; justify-content:flex-start; gap:0.75rem; align-items:center; background:#ffffff; border:1px solid #e5e7eb; border-radius:0.5rem; padding:0.75rem 1rem; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+            <button type="button" onclick="startVoiceOrderSession()"
+            style="background:#6366f1; color:#fff; padding:0.5rem 1rem; border-radius:0.5rem; border:none; cursor:pointer; font-weight:600; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
+            Order with AI
+            </button>
+        </div>
+
+        <div id="voice-controls" class="hidden"
+            style="width:100%; max-width:960px; box-sizing:border-box; margin:12px auto 0; display:none; gap:0.75rem; align-items:stretch; background:#ffffff; border:1px solid #e5e7eb; border-radius:0.5rem; padding:0.75rem 1rem; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+            <div style="flex:1; display:flex; flex-direction:column; gap:0.5rem;">
+                <div id="speech-output"
+                style="flex:1; border:1px solid #e5e7eb; padding:0.5rem; border-radius:0.5rem; color:#4b5563; background:#ffffff;
+                min-height:8rem; max-height:16rem; overflow-y:auto; display:block;">
+                Output here
+                </div>
+                <div style="display:flex; gap:0.5rem; margin-top:0.25rem;">
+                    <input type="text" id="voice-text-input" placeholder="Type a message"
+                    style="flex:1; border:1px solid #e5e7eb; border-radius:0.375rem; padding:0.25rem 0.5rem;"
+                    onkeydown="if(event.key==='Enter'){ sendTypedVoiceChatMessage(); }">
+                    <button type="button" onclick="sendTypedVoiceChatMessage()"
+                    style="background:#3b82f6; color:#fff; border:none; padding:0.25rem 0.75rem; border-radius:0.375rem; cursor:pointer; font-size:0.9rem;">
+                        Send
+                    </button>
+                </div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:0.5rem; align-items:center;">
+                <button type="button" onclick="startSpeechToText()" title="Start listening"
+                style="background:#3b82f6; color:#fff; border:none; padding:0.25rem 0.5rem; border-radius:9999px; cursor:pointer; font-size:1.1rem;">
+                    🎤
+                </button>
+                <button type="button" onclick="finalizeVoiceOrderCart()" title="Create cart" id="sendVoiceRequestButton"
+                style="background:#10b981; color:#fff; border:none; padding:0.25rem 0.5rem; border-radius:9999px; cursor:pointer; font-size:1.1rem;">
+                    🛒
+                </button>
+                <button type="button" onclick="restartVoiceOrderSession()" title="Restart chat session"
+                style="background:#6b7280; color:#fff; border:none; padding:0.25rem 0.5rem; border-radius:9999px; cursor:pointer; font-size:1.1rem;">
+                    🔁
+                </button>
+            </div>
+        </div>
+
+        </div>
+
+        {% comment %} <div name="Items_list" class="grid grid-cols-1 md:grud-cols-2 lg:grid-cols-3 gap-6">
+            {% for item in page_obj %}
+                <div class="border border-gray-300 rounded-lg p-4 shadow-md">
+                    <h3 class="text-lg font-bold mb-2">{{ item.name }}</h3>
+                    <p class="text-gray-700">Price: ${{ item.price }}</p>
+                    <p class="text-gray-700">Store: {{ item.store.name }}</p>
+                    <p class="text-gray-700">Stock: {{ item.stock }}</p>
+                </div>
+            {% empty %}
+                <p class="col-span-full text-center text-gray-500">No items match your criteria.</p>
+            {% endfor %}
+        </div> {% endcomment %}
+        <div name="Items_list" class="items-list">
+            {% for item in page_obj %}
+            <div class="item-card grid grid-cols-4 border border-gray-300 rounded-lg p-4 shadow-md items-center bg-white hover:bg-blue-500 hover:shadow-lg transition-all duration-150" 
+                onclick="handleItemClick(event, this, {{ item.id }})">
+
+                <div class="text-lg font-bold">{{ item.name }}</div>
+                <div class="text-gray-700">Price: ${{ item.price }}</div>
+                <div class="text-gray-700">Store: {{ item.store.name }}</div>
+
+                <div>
+                    <input type="number" 
+                        name="item_quantity"
+                        value="1"
+                        min="1"
+                        class="w-16 px-2 py-1 border border-gray-300 rounded-lg">
+                </div>
+            </div>
+            {% empty %}
+                {% comment %} {% if store_filter != 'Kroger' %} {% endcomment %}
+                    <p class="empty-state">No items match your criteria.</p>
+                {% comment %} {% endif %} {% endcomment %}
+            {% endfor %}
+        </div>
+
+        <div class="pagination-wrapper">
+            {% if page_obj %}
+            <nav class="pagination" aria-label="Pagination">
+                {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}&Stores={{ store_filter|urlencode }}&Price-Range={{ price_filter|urlencode }}&Item_Search_Bar={{ search_query|urlencode }}&zip_code={{ zip_code|default:''|urlencode }}" class="page-link">Previous</a>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                    <span class="page-link-current">{{ num }}</span>
+                {% elif num >= page_obj.number|add:-2 and num <= page_obj.number|add:2 %}
+                    <a href="?page={{ num }}&Stores={{ store_filter|urlencode }}&Price-Range={{ price_filter|urlencode }}&Item_Search_Bar={{ search_query|urlencode }}&zip_code={{ zip_code|default:''|urlencode }}" class="page-link">{{ num }}</a>
+                {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}&Stores={{ store_filter|urlencode }}&Price-Range={{ price_filter|urlencode }}&Item_Search_Bar={{ search_query|urlencode }}&zip_code={{ zip_code|default:''|urlencode }}" class="page-link">Next</a>
+                {% endif %}
+            </nav>
+            {% endif %}
+        </div>
+        {% if using_kroger and kroger_products %}
+            <div class="kroger-results">
+                <h3 class="section-title">Kroger Results</h3>
+                <div class="items-list">
+                    {% for p in kroger_products %}
+                        {% with desc=p.description price=p.items.0.price.regular %}
+                        <div class="item-card" onclick="addKrogerCardClick(this, '{{ desc|escapejs }}', '{{ price|default:'' }}')">
+                            <div class="item-card-title">{{ desc }}</div>
+                            <div class="item-card-text">Price: ${{ price|default:'—' }}</div>
+                            <div class="item-card-text">Store: Kroger</div>
+                        <div>
+                            <input type="number" name="item_ammount" value="1" min="1" class="item-qty-input">
+                        </div>
+                    </div>
+                    {% endwith %}
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+    <script>
+        function addKrogerCardClick(el, name, price){
+            const qtyInput = el.querySelector('input[name="item_ammount"]');
+            const qty = qtyInput ? parseInt(qtyInput.value || '1', 10) : 1;
+
+            if (!price) { alert('This item has no price and cannot be added.'); return; }
+
+            fetch("{% url 'add_kroger_item_to_cart' %}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': "{{ csrf_token }}" },
+                body: JSON.stringify({ product_name: name, product_price: price, item_ammount: qty })
+            })
+            .then(r => (r.headers.get('content-type')||'').includes('application/json') ? r.json() : {})
+            .catch(() => alert('Failed to add item.'));
+        }
+    </script>
+
+
+{% csrf_token %}
+</body>
+<style>
+    body {
+        margin: 0;
+        font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+        background-color: #FFFFFF;
+        color: #1F2937;
+    }
+
+    .cart-page {
+        max-width: 960px;
+        margin: 24px auto 40px;
+        padding: 0 16px;
+        box-sizing: border-box;
+    }
+
+    .cart-filters-row {
+        display: flex;
+        justify-content: center;
+        margin-top: 8px;
+    }
+
+    .cart-filter-form {
+        width: 100%;
+        max-width: 960px;
+        background-color: #FFFFFF;
+        border: 1px solid #E5E7EB;
+        border-radius: 8px;
+        padding: 16px 20px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        align-items: flex-start;
+        box-sizing: border-box;
+        margin: 0 auto 24px;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        flex: 1 1 150px;
+        min-width: 0;
+    }
+
+    .filter-label {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 6px;
+    }
+
+    .filter-select,
+    .filter-input {
+        border-radius: 6px;
+        border: 1px solid #D1D5DB;
+        padding: 8px 10px;
+        font-size: 0.95rem;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .filter-input-strong {
+        border-color: #111827;
+    }
+
+    .search-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        margin-top: 8px;
+    }
+
+    .search-input {
+        flex: 1;
+        border-radius: 6px;
+        border: 1px solid #D1D5DB;
+        padding: 8px 12px;
+        font-size: 0.95rem;
+    }
+
+    .search-button {
+        border: none;
+        border-radius: 6px;
+        padding: 8px 16px;
+        background-color: #10B981;
+        color: #FFFFFF;
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+    }
+
+    .search-button:hover {
+        background-color: #059669;
+    }
+
+    .items-list {
+        max-width: 960px;
+        margin: 24px auto 0;
+        padding: 0 16px;
+        box-sizing: border-box;
+        display: grid;
+        gap: 16px;
+    }
+
+    .item-card {
+        display: grid;
+        grid-template-columns: 2fr 1.2fr 1.2fr auto;
+        align-items: center;
+        background-color: #FFFFFF;
+        border-radius: 8px;
+        border: 1px solid #E5E7EB;
+        padding: 16px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+    }
+
+    .item-card-title {
+        font-size: 1.05rem;
+        font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .item-card-text {
+        color: #6B7280;
+        font-size: 0.95rem;
+    }
+
+    .item-qty-input {
+        width: 64px;
+        padding: 4px 8px;
+        border-radius: 6px;
+        border: 1px solid #D1D5DB;
+        font-size: 0.9rem;
+    }
+
+    .item-card:hover {
+        background-color: #F3F4F6;
+        cursor: pointer;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+    }
+
+    .item-card.active-press {
+        background-color: #e5e7eb; /* darker gray on click */
+        transform: scale(0.98);      /* slight press effect */
+        transition: transform 0.1s, background-color 0.1s;
+    }
+
+    /* Pagination Styling */
+    .pagination-wrapper {
+        display: flex;
+        justify-content: center;
+        margin-top: 32px;
+        margin-bottom: 32px;
+    }
+
+    .pagination {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .page-link {
+        padding: 8px 16px;
+        border: 1px solid #D1D5DB;
+        border-radius: 6px;
+        text-decoration: none;
+        color: #374151;
+        background-color: #FFFFFF;
+        transition: all 0.2s;
+        font-weight: 500;
+    }
+
+    .page-link:hover {
+        background-color: #F3F4F6;
+        border-color: #9CA3AF;
+    }
+
+    .page-link-current {
+        padding: 8px 16px;
+        border: 1px solid #10B981;
+        border-radius: 6px;
+        background-color: #10B981;
+        color: #FFFFFF;
+        font-weight: 600;
+    }
+</style>
+<script>
+    const csrf_token = "{{ csrf_token }}";
+    function handleItemClick(event, element, item_id) {
+        if (event.target.closest('input[name="item_quantity"]')) {
+            return;
+        }
+
+        const qtyInput = element.querySelector('input[name="item_quantity"]');
+        const qty = qtyInput ? parseInt(qtyInput.value) : 1;
+
+        fetch(`/cart/add/${item_id}/${qty}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrf_token
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log("Added to cart:", data);
+        })
+        .catch(error => console.error("Error:", error));
+    }
+
+    document.querySelectorAll('.item-card').forEach(card => {
+        const input = card.querySelector('input');
+
+        card.addEventListener('mousedown', e => {
+            if (!e.target.closest('input')) {
+                card.classList.add('active-press');
+            }
+        });
+
+        card.addEventListener('mouseup', () => card.classList.remove('active-press'));
+        card.addEventListener('mouseleave', () => card.classList.remove('active-press'));
+
+        if (input) {
+            input.addEventListener('mousedown', e => e.stopPropagation());
+        }
+    });
+    {% comment %} (function(){
+    const select = document.getElementById('StoresSelect');
+    const hidden = document.getElementById('store_filter');
+    const box = document.getElementById('krogerBox');
+
+    if (!select || !hidden || !box) return; {% endcomment %}
+
+    {% comment %} function toggleKrogerBox(){
+        const val = select.value;
+        hidden.value = val;
+      if (val === 'Kroger'){
+        box.classList.remove('hidden');
+      }
+      else {
+        box.classList.add('hidden');
+    }
+    } {% endcomment %}
+
+    {% comment %} select.addEventListener('change', toggleKrogerBox);
+    toggleKrogerBox();
+  })(); {% endcomment %}
+  
+  {% comment %} function addKrogerItem(name, price){
+    if (!name || !price) {
+      alert('This item is missing a price and cannot be added.');
+      return;
+    }
+    fetch("{% url 'add_kroger_item_to_cart' %}", {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf_token },
+      body: JSON.stringify({ product_name: name, product_price: price })
+    })
+    .then(r => {
+      const ct = r.headers.get('content-type')||'';
+      return ct.includes('application/json') ? r.json() : {};
+    })
+    .then(data => {
+      console.log('Added Kroger item:', name, price, data);
+    })
+    .catch(err => {
+      console.error(err);
+      alert('Failed to add item to cart.');
+    });
+  } {% endcomment %}
+
+  {% comment %} function addKrogerCardClick(el, name, price){
+    const qtyInput = el.querySelector('input[name="item_ammount"]');
+    const qty = qtyInput ? parseInt(qtyInput.value || '1', 10) : 1;
+
+    if (!price) { alert('This item is missing a price and cannot be added.'); return; }
+
+    fetch("{% url 'add_kroger_item_to_cart' %}", {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf_token },
+      body: JSON.stringify({ product_name: name, product_price: price, item_ammount: qty })
+    })
+    .then(r => (r.headers.get('content-type')||'').includes('application/json') ? r.json() : {})
+    .then(data => { console.log('Added', name, qty); })
+    .catch(err => { console.error(err); alert('Failed to add item to cart.'); });
+  } {% endcomment %}
+</script>
+
+<footer>
+
+</footer>
+
+</html>

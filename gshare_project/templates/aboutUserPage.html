@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile</title>
+    <link rel="stylesheet" href="{% static 'css/aboutUserPage.css' %}?v={% now 'U' %}">
+    <script src="{% static 'js/aboutUserPage.js' %}"></script>
+</head>
+{% include "navbar.html" %}
+
+<body>
+    {% if messages %}
+    <div class="messages-container">
+        {% for message in messages %}
+        <div class="alert alert-info" role="alert">
+            <p>{{ message }}</p>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="profile-container">
+        <div class="profile-layout">
+            <!-- Left Side - Profile Picture and Basic Info -->
+            <div class="user-info-column">
+                <form method="post" action="{% url 'profile' %}">
+                    {% csrf_token %}
+                    <div class="profile-header">
+                        <div class="profile-pic-container">
+                            {% if user.profile_picture %}
+                            <img src="{{ user.profile_picture.url }}" alt="User's uploaded profile picture" class="profile-pic">
+                            {% else %}
+                                <img src="{% static 'media/user.png' %}" alt="Default profile picture" class="profile-pic">
+                            {% endif %}
+                        </div>
+                        <div class="user-details">
+                            <h1>{{ user.name }}</h1>
+                            <div class="username">
+                                <p>@{{ user.username }}</p>
+                            </div>
+                            <div class="rating-container">
+                                {% if review_count > 0 %}
+                                    <span class="star-filled">{{ stars_text }}</span>
+                                    <span>
+                                        {% for i in '12345' %}
+                                            {% if avg_rating|floatformat:0 >= i|floatformat:0 %}
+                                                <span class="star-filled">★</span>
+                                            {% else %}
+                                                <span class="star-empty">★</span>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </span>
+                                    <span class="rating-text">({{ avg_rating|floatformat:1 }} avg, {{ review_count }} reviews)</span>
+                                {% else %}
+                                    <span class="star-filled">★★★★★</span>
+                                    <span class="rating-text">(0 reviews)</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Account Info -->
+                    <div class="info-group">
+                        <label for="name" class="info-label">Name</label>
+                        <input type="text" disabled id="name" name="name" value="{{ user.name|default:'' }}" class="info-input">
+                    </div>
+                    
+                    <div class="info-group">
+                        <label for="email" class="info-label">Email</label>
+                        <input type="email" disabled id="email" name="email" value="{{ user.email }}" class="info-input">
+                    </div>
+                    
+                    <div class="info-group">
+                        <label for="phone" class="info-label">Phone Number</label>
+                        <input type="tel" disabled id="phone" name="phone" value="{{ user.phone|default:'' }}" class="info-input">
+                    </div>
+                    
+                    <div class="info-group">
+                        <label for="address" class="info-label">Delivery Address</label>
+                        <input type="text" disabled id="address" name="address" value="{{ user.address|default:'' }}" class="info-input">
+                    </div>
+                    
+                    <div class="info-group">
+                        <label for="description" class="info-label">About User:</label>
+                        <div id="description" class="about-box">
+                            {{ user.description|default:'No user description found!' }}
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Right Side - Reviews -->
+            <div class="reviews-column">
+                <!-- New Review -->
+                <div class="review-form-card">
+                    <form method="post" action="{% url 'getUserProfile' user.id %}">
+                        {% csrf_token %}
+                        <h3 class="section-title">Leave a Review</h3>
+                        
+                        <div class="rating-selector">
+                            <span>Select a rating:</span>
+                            <input type="hidden" id="rating" name="rating" value="0">
+                            <div>
+                                <button type="button" class="star-btn" id="star1" onclick="setRating(1)">⭐️</button>
+                                <button type="button" class="star-btn" id="star2" onclick="setRating(2)">⭐️</button>
+                                <button type="button" class="star-btn" id="star3" onclick="setRating(3)">⭐️</button>
+                                <button type="button" class="star-btn" id="star4" onclick="setRating(4)">⭐️</button>
+                                <button type="button" class="star-btn" id="star5" onclick="setRating(5)">⭐️</button>
+                            </div>
+                        </div>
+                        
+                        <input type="text" required name="title" class="review-input" placeholder="Title" maxlength="50">
+                        <textarea required name="review" class="review-input" rows="4" placeholder="Enter your review here..." maxlength="255"></textarea>
+                        
+                        <div style="display: flex; justify-content: flex-end;">
+                            <button type="submit" name="saveReview" class="btn-primary">Post Review</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Past Reviews -->
+                <div class="reviews-list">
+                    <h3 class="section-title">Past Reviews</h3>
+                    {% if userReviews %}
+                        {% for userReview in userReviews %}
+                        <div class="review-card">
+                            <div class="review-header">
+                                <h4 class="review-title">{{ userReview.description_subject }}</h4>
+                                <div>
+                                    {% for i in '12345' %}
+                                        {% if userReview.rating|floatformat:0|add:0 >= i|floatformat:0|add:0 %}
+                                            <span class="star-filled">★</span>
+                                        {% else %}
+                                            <span class="star-empty">★</span>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div class="review-content">{{userReview.feedback}}</div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-reviews">No past reviews found for {{ user.name }}!</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
