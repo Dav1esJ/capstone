@@ -1,5 +1,8 @@
 ## Name
-Gshare
+Gshare (Group Project)
+
+## Members
+Jason Davies, Abdul Mansoor, Yang Hong, Anand Raju Palukuri
 
 ## Description
 The purpose of G-Share is to transform the grocery shopping experience by creating a collaborative shopping platform that enhances the shopping experience. G-Share connects neighbors who are already planning grocery store visits with those who need groceries but lack the time, energy, or budget for traditional shopping trips or delivery options. This platform addresses a common household challenge by offering an efficient and affordable alternative to conventional delivery apps, which often charge high fees. Through G-Share, community members help each other obtain essential items, creating both convenience and neighborhood connections.
